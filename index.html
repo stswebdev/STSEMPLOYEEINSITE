@@ -42,13 +42,13 @@
 
     let auth0Client;
 
-    // List of authorized usernames/emails
     const allowedUsers = [
       "naledbetter", "naledbetter@slatetruckstudios.com",
       "pmnitzel", "pmnitzel@slatetruckstudios.com"
     ];
 
     async function configureAuth() {
+      // Correct function call to createAuth0Client
       auth0Client = await createAuth0Client({
         domain: "dev-8l6bzbrqo1exjrlb.us.auth0.com",
         client_id: "ntb2w9GWTKuKN4HbcDrvKM8FYz6imuk0",
@@ -58,13 +58,17 @@
         }
       });
 
-      // If returning from Auth0 redirect, handle callback
+      // Handle Auth0 redirect callback
       if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
-        await auth0Client.handleRedirectCallback();
-        window.history.replaceState({}, document.title, window.location.pathname);
+        try {
+          await auth0Client.handleRedirectCallback();
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (err) {
+          console.error('Error handling redirect callback:', err);
+        }
       }
 
-      showLoginOrDashboard();
+      await showLoginOrDashboard();
     }
 
     async function showLoginOrDashboard() {
@@ -76,7 +80,9 @@
       if (!isAuthenticated) {
         content.innerHTML = `<div class="card"><h2>Welcome</h2><p>Please log in to access the Slatetruckstudios Employee Portal.</p><button id="loginBtn">Login</button></div>`;
         logoutBtn.style.display = 'none';
-        document.getElementById('loginBtn').addEventListener('click', () => auth0Client.loginWithRedirect());
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+          await auth0Client.loginWithRedirect();
+        });
         return;
       }
 
@@ -94,7 +100,7 @@
 
     async function logout() {
       await auth0Client.logout({ logoutParams: { returnTo: window.location.origin } });
-      showLoginOrDashboard();
+      await showLoginOrDashboard();
     }
 
     configureAuth();
