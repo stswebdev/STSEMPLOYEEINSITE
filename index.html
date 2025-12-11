@@ -49,71 +49,52 @@
     ];
 
     async function configureAuth() {
-      auth0Client = await auth0.createAuth0Client({
+      auth0Client = await createAuth0Client({
         domain: "dev-8l6bzbrqo1exjrlb.us.auth0.com",
-        clientId: "ntb2w9GWTKuKN4HbcDrvKM8FYz6imuk0",
+        client_id: "ntb2w9GWTKuKN4HbcDrvKM8FYz6imuk0",
         cacheLocation: 'localstorage',
         authorizationParams: {
           redirect_uri: window.location.origin
         }
       });
 
-      // Handle redirect after login
-      if (window.location.search.includes("code=") && window.location.search.includes("state=")) {
+      // If returning from Auth0 redirect, handle callback
+      if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
         await auth0Client.handleRedirectCallback();
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
-      await updateUI();
+      showLoginOrDashboard();
     }
 
-    async function updateUI() {
-      const content = document.getElementById("content");
-      const logoutBtn = document.getElementById("logoutBtn");
+    async function showLoginOrDashboard() {
+      const content = document.getElementById('content');
+      const logoutBtn = document.getElementById('logoutBtn');
 
       const isAuthenticated = await auth0Client.isAuthenticated();
-      if (!isAuthenticated) {
-        content.innerHTML = `
-        <div class="card">
-          <h2>Welcome</h2>
-          <p>Please log in to access the Slatetruckstudios Employee Portal.</p>
-          <button id="loginBtn">Login</button>
-        </div>`;
-        logoutBtn.style.display = "none";
 
-        document.getElementById("loginBtn").addEventListener("click", async () => {
-          await auth0Client.loginWithRedirect();
-        });
+      if (!isAuthenticated) {
+        content.innerHTML = `<div class="card"><h2>Welcome</h2><p>Please log in to access the Slatetruckstudios Employee Portal.</p><button id="loginBtn">Login</button></div>`;
+        logoutBtn.style.display = 'none';
+        document.getElementById('loginBtn').addEventListener('click', () => auth0Client.loginWithRedirect());
         return;
       }
 
       const user = await auth0Client.getUser();
-      // Restrict access based on allowed usernames/emails
+
       if (!allowedUsers.includes(user.email) && !allowedUsers.includes(user.nickname)) {
         content.innerHTML = `<div class='card'><h2>Access Denied</h2><p>You are not authorized to access this portal.</p></div>`;
-        logoutBtn.style.display = "inline-block";
+        logoutBtn.style.display = 'inline-block';
         return;
       }
 
-      logoutBtn.style.display = "inline-block";
-      content.innerHTML = `
-        <div class="card">
-          <h2>Hello, ${user.name || user.email}</h2>
-          <p>Welcome to the internal employee dashboard.</p>
-        </div>
-        <div class="card">
-          <h2>Company Resources</h2>
-          <ul>
-            <li><a href="#" style="color: var(--primary-red);">Payroll</a></li>
-            <li><a href="#" style="color: var(--primary-red);">Schedule</a></li>
-            <li><a href="#" style="color: var(--primary-red);">Internal Handbook</a></li>
-          </ul>
-        </div>`;
+      logoutBtn.style.display = 'inline-block';
+      content.innerHTML = `<div class="card"><h2>Hello, ${user.name || user.email}</h2><p>Welcome to the internal employee dashboard.</p></div><div class="card"><h2>Company Resources</h2><ul><li><a href="#" style="color: var(--primary-red);">Payroll</a></li><li><a href="#" style="color: var(--primary-red);">Schedule</a></li><li><a href="#" style="color: var(--primary-red);">Internal Handbook</a></li></ul></div>`;
     }
 
     async function logout() {
       await auth0Client.logout({ logoutParams: { returnTo: window.location.origin } });
-      await updateUI();
+      showLoginOrDashboard();
     }
 
     configureAuth();
