@@ -34,7 +34,7 @@
 
   <footer>© <span id="year"></span> Slatetruckstudios — Internal Use Only</footer>
 
-  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.5/auth0-spa-js.production.js"></script>
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.6/auth0-spa-js.production.js"></script>
 
   <script>
     const yearSpan = document.getElementById("year");
@@ -42,10 +42,17 @@
 
     let auth0Client;
 
+    // List of authorized usernames/emails
+    const allowedUsers = [
+      "naledbetter", "naledbetter@slatetruckstudios.com",
+      "pmnitzel", "pmnitzel@slatetruckstudios.com"
+    ];
+
     async function configureAuth() {
       auth0Client = await auth0.createAuth0Client({
         domain: "dev-8l6bzbrqo1exjrlb.us.auth0.com",
         clientId: "ntb2w9GWTKuKN4HbcDrvKM8FYz6imuk0",
+        cacheLocation: 'localstorage',
         authorizationParams: {
           redirect_uri: window.location.origin
         }
@@ -57,14 +64,14 @@
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
-      updateUI();
+      await updateUI();
     }
 
     async function updateUI() {
-      const isAuthenticated = await auth0Client.isAuthenticated();
       const content = document.getElementById("content");
       const logoutBtn = document.getElementById("logoutBtn");
 
+      const isAuthenticated = await auth0Client.isAuthenticated();
       if (!isAuthenticated) {
         content.innerHTML = `
         <div class="card">
@@ -81,14 +88,19 @@
       }
 
       const user = await auth0Client.getUser();
-      logoutBtn.style.display = "inline-block";
+      // Restrict access based on allowed usernames/emails
+      if (!allowedUsers.includes(user.email) && !allowedUsers.includes(user.nickname)) {
+        content.innerHTML = `<div class='card'><h2>Access Denied</h2><p>You are not authorized to access this portal.</p></div>`;
+        logoutBtn.style.display = "inline-block";
+        return;
+      }
 
+      logoutBtn.style.display = "inline-block";
       content.innerHTML = `
         <div class="card">
-          <h2>Hello, ${user.name || "Employee"}</h2>
+          <h2>Hello, ${user.name || user.email}</h2>
           <p>Welcome to the internal employee dashboard.</p>
         </div>
-
         <div class="card">
           <h2>Company Resources</h2>
           <ul>
@@ -100,8 +112,8 @@
     }
 
     async function logout() {
-      await auth0Client.logout({ logoutParams:{ returnTo: window.location.origin } });
-      updateUI();
+      await auth0Client.logout({ logoutParams: { returnTo: window.location.origin } });
+      await updateUI();
     }
 
     configureAuth();
