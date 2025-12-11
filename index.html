@@ -11,10 +11,10 @@
     header img { height:40px; }
     header h1 { margin:0; font-size:20px; letter-spacing:2px; color:var(--primary-red); }
     .container { padding:40px; max-width:1000px; margin:0 auto; }
-    .card { background:var(--black); border:1px solid var(--primary-red); border-radius:8px; padding:25px; margin-bottom:20px; }
+    .card { background:var(--black); border:1px solid var(--primary-red); border-radius:8px; padding:25px; margin-bottom:20px; box-shadow:0 0 20px rgba(217,4,41,0.4); }
     .card h2 { margin-top:0; color:var(--primary-red); }
-    button { background:var(--primary-red); border:none; padding:10px 16px; color:white; border-radius:6px; cursor:pointer; }
-    button:hover{ background:#b10321; }
+    button { background:var(--primary-red); border:none; padding:10px 16px; color:white; border-radius:6px; cursor:pointer; transition:0.3s; font-weight:bold; }
+    button:hover{ background:#b10321; transform:scale(1.05); }
     footer{ background:var(--black); padding:15px; text-align:center; border-top:2px solid var(--primary-red); color:var(--light-gray);} 
   </style>
 </head>
@@ -25,12 +25,7 @@
     <button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
   </header>
 
-  <div class="container" id="content">
-    <div class="card" id="loadingCard">
-      <h2>Checking Authentication...</h2>
-      <p>Please wait while we verify your login status.</p>
-    </div>
-  </div>
+  <div class="container" id="content"></div>
 
   <footer>© <span id="year"></span> Slatetruckstudios — Internal Use Only</footer>
 
@@ -40,49 +35,43 @@
     const yearSpan = document.getElementById("year");
     yearSpan.textContent = new Date().getFullYear();
 
-    let auth0Client;
-
     const allowedUsers = [
       "naledbetter", "naledbetter@slatetruckstudios.com",
       "pmnitzel", "pmnitzel@slatetruckstudios.com"
     ];
 
-    async function configureAuth() {
-      // Correct function call to createAuth0Client
-      auth0Client = await createAuth0Client({
-        domain: "dev-8l6bzbrqo1exjrlb.us.auth0.com",
-        client_id: "ntb2w9GWTKuKN4HbcDrvKM8FYz6imuk0",
-        cacheLocation: 'localstorage',
-        authorizationParams: {
-          redirect_uri: window.location.origin
-        }
-      });
+    let auth0Client;
 
-      // Handle Auth0 redirect callback
-      if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
-        try {
+    async function initAuth0() {
+      try {
+        auth0Client = await createAuth0Client({
+          domain: 'dev-8l6bzbrqo1exjrlb.us.auth0.com',
+          client_id: 'ntb2w9GWTKuKN4HbcDrvKM8FYz6imuk0',
+          cacheLocation: 'localstorage',
+          authorizationParams: { redirect_uri: window.location.origin }
+        });
+
+        if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
           await auth0Client.handleRedirectCallback();
           window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (err) {
-          console.error('Error handling redirect callback:', err);
         }
-      }
 
-      await showLoginOrDashboard();
+        await renderUI();
+      } catch (err) {
+        console.error('Auth0 initialization error:', err);
+        document.getElementById('content').innerHTML = `<div class='card'><h2>Error</h2><p>Authentication initialization failed. Check console.</p></div>`;
+      }
     }
 
-    async function showLoginOrDashboard() {
+    async function renderUI() {
       const content = document.getElementById('content');
       const logoutBtn = document.getElementById('logoutBtn');
-
       const isAuthenticated = await auth0Client.isAuthenticated();
 
       if (!isAuthenticated) {
-        content.innerHTML = `<div class="card"><h2>Welcome</h2><p>Please log in to access the Slatetruckstudios Employee Portal.</p><button id="loginBtn">Login</button></div>`;
+        content.innerHTML = `<div class='card'><h2>Welcome</h2><p>Please log in to access the Slatetruckstudios Employee Portal.</p><button id='loginBtn'>Login</button></div>`;
         logoutBtn.style.display = 'none';
-        document.getElementById('loginBtn').addEventListener('click', async () => {
-          await auth0Client.loginWithRedirect();
-        });
+        document.getElementById('loginBtn').addEventListener('click', () => auth0Client.loginWithRedirect());
         return;
       }
 
@@ -95,15 +84,20 @@
       }
 
       logoutBtn.style.display = 'inline-block';
-      content.innerHTML = `<div class="card"><h2>Hello, ${user.name || user.email}</h2><p>Welcome to the internal employee dashboard.</p></div><div class="card"><h2>Company Resources</h2><ul><li><a href="#" style="color: var(--primary-red);">Payroll</a></li><li><a href="#" style="color: var(--primary-red);">Schedule</a></li><li><a href="#" style="color: var(--primary-red);">Internal Handbook</a></li></ul></div>`;
+      content.innerHTML = `<div class='card'><h2>Hello, ${user.name || user.email}</h2><p>Welcome to the internal employee dashboard.</p></div>
+      <div class='card'><h2>Company Resources</h2><ul>
+        <li><a href='#' style='color: var(--primary-red);'>Payroll</a></li>
+        <li><a href='#' style='color: var(--primary-red);'>Schedule</a></li>
+        <li><a href='#' style='color: var(--primary-red);'>Internal Handbook</a></li>
+      </ul></div>`;
     }
 
     async function logout() {
       await auth0Client.logout({ logoutParams: { returnTo: window.location.origin } });
-      await showLoginOrDashboard();
+      await renderUI();
     }
 
-    configureAuth();
+    window.onload = initAuth0;
   </script>
 </body>
 </html>
