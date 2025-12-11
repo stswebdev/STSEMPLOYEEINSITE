@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slatetruckstudios Employee Portal</title>
+  <style>
+    :root {
+      --primary-red: #d90429;
+      --black: #0b0b0b;
+      --dark-gray: #1a1a1a;
+      --light-gray: #e5e5e5;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--dark-gray);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      background: var(--black);
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary-red);
+    }
+
+    header img {
+      height: 40px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--primary-red);
+    }
+
+    /* Main container */
+    .container {
+      flex: 1;
+      padding: 40px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--black);
+      border: 1px solid var(--primary-red);
+      border-radius: 8px;
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      color: var(--primary-red);
+    }
+
+    button {
+      background: var(--primary-red);
+      border: none;
+      padding: 10px 16px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #b10321;
+    }
+
+    footer {
+      background: var(--black);
+      padding: 15px;
+      text-align: center;
+      border-top: 2px solid var(--primary-red);
+      color: var(--light-gray);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://static.wixstatic.com/media/1a6956_64fdf70e836a4c1f8fedfcc34751971e~mv2.png/v1/fill/w_176,h_41,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/1a6956_64fdf70e836a4c1f8fedfcc34751971e~mv2.png" alt="Slatetruckstudios Logo" />
+    <h1>Employee Portal</h1>
+    <button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
+  </header>
+
+  <div class="container" id="content">
+    <div class="card" id="loadingCard">
+      <h2>Checking Authentication...</h2>
+      <p>Please wait while we verify your login status.</p>
+    </div>
+  </div>
+
+  <footer>
+    © <span id="year"></span> Slatetruckstudios — Internal Use Only
+  </footer>
+
+  <!-- Auth0 Script -->
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.5/auth0-spa-js.production.js"></script>
+
+  <script>
+    const yearSpan = document.getElementById("year");
+    yearSpan.textContent = new Date().getFullYear();
+
+    let auth0Client;
+
+    async function configureAuth() {
+      auth0Client = await createAuth0Client({
+        domain: "dev-8l6bzbrqo1exjrlb.us.auth0.com",
+        clientId: "ntb2w9GWTKuKN4HbcDrvKM8FYz6imuk0",
+        authorizationParams: {
+          redirect_uri: window.location.origin
+        }
+      });
+
+      // Handle redirect from Auth0
+      if (window.location.search.includes("code=")) {
+        await auth0Client.handleRedirectCallback();
+        window.history.replaceState({}, document.title, "/");
+      }
+
+      updateUI();
+    }
+
+    async function updateUI() {
+      const isAuthenticated = await auth0Client.isAuthenticated();
+
+      const content = document.getElementById("content");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      if (!isAuthenticated) {
+        content.innerHTML = `
+          <div class="card">
+            <h2>Welcome</h2>
+            <p>Please log in to access the Slatetruckstudios Employee Portal.</p>
+            <button onclick="login()">Login</button>
+          </div>
+        `;
+        logoutBtn.style.display = "none";
+        return;
+      }
+
+      const user = await auth0Client.getUser();
+
+      logoutBtn.style.display = "inline-block";
+
+      content.innerHTML = `
+        <div class="card">
+          <h2>Hello, ${user.name || "Employee"}</h2>
+          <p>Welcome to the internal employee dashboard.</p>
+        </div>
+
+        <div class="card">
+          <h2>Company Resources</h2>
+          <ul>
+            <li><a href="#" style="color: var(--primary-red);">Payroll</a></li>
+            <li><a href="#" style="color: var(--primary-red);">Schedule</a></li>
+            <li><a href="#" style="color: var(--primary-red);">Internal Handbook</a></li>
+          </ul>
+        </div>
+      `;
+    }
+
+    async function login() {
+      await auth0Client.loginWithRedirect();
+    }
+
+    async function logout() {
+      auth0Client.logout({
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
+    }
+
+    configureAuth();
+  </script>
+  <!-- Additional features pending implementation -->
+</body>
+</html>
